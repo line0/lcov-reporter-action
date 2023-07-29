@@ -25484,6 +25484,7 @@ async function main$1() {
 		core$1.getInput("filter-changed-files").toLowerCase() === "true";
 	const shouldDeleteOldComments =
 		core$1.getInput("delete-old-comments").toLowerCase() === "true";
+	const postTo = core$1.getInput("post-to").toLowerCase();
 	const title = core$1.getInput("title");
 
 	const raw = await fs.promises.readFile(lcovFile, "utf-8").catch(err => null);
@@ -25530,20 +25531,29 @@ async function main$1() {
 		await deleteOldComments(githubClient, options, github_1);
 	}
 
-	if (github_1.eventName === "pull_request") {
-		await githubClient.issues.createComment({
-			repo: github_1.repo.repo,
-			owner: github_1.repo.owner,
-			issue_number: github_1.payload.pull_request.number,
-			body: body,
-		});
-	} else if (github_1.eventName === "push") {
-		await githubClient.repos.createCommitComment({
-			repo: github_1.repo.repo,
-			owner: github_1.repo.owner,
-			commit_sha: options.commit,
-			body: body,
-		});
+	switch (postTo) {
+		case "comment":
+			if (github_1.eventName === "pull_request") {
+				await githubClient.issues.createComment({
+					repo: github_1.repo.repo,
+					owner: github_1.repo.owner,
+					issue_number: github_1.payload.pull_request.number,
+					body: body,
+				});
+			} else if (github_1.eventName === "push") {
+				await githubClient.repos.createCommitComment({
+					repo: github_1.repo.repo,
+					owner: github_1.repo.owner,
+					commit_sha: options.commit,
+					body: body,
+				});
+			}
+			break
+		case "job-summary":
+			await core$1.summary.addRaw(body).write();
+			break
+		default:
+			core$1.warning(`Unknown post-to value: '${postTo}'`);
 	}
 }
 
