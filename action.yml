@@ -24,7 +24,7 @@ inputs:
     required: false
     default: false
   working-directory:
-    description: Set working directory if project is not in root folder  
+    description: Set working directory if project is not in root folder
     required: false
     default: "./"
   post-to:
@@ -35,5 +35,5 @@ inputs:
     description: Title to add to the comment
     required: false
 runs:
-  using: node16
+  using: node20
   main: dist/main.js
