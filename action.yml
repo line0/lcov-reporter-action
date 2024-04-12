@@ -28,7 +28,7 @@ inputs:
     required: false
     default: "./"
   post-to:
-    description: Post the coverage report to either "comment" or "job-summary"
+    description: Post the coverage report to "comment" or "job-summary" or "comment-and-job-summary" for both
     required: false
     default: "comment"
   title:

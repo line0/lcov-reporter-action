@@ -10,6 +10,24 @@ import { normalisePath } from "./util.js"
 
 const MAX_COMMENT_CHARS = 65536
 
+async function postComment(githubClient, body, options) {
+	if (context.eventName === "pull_request") {
+		await githubClient.issues.createComment({
+			repo: context.repo.repo,
+			owner: context.repo.owner,
+			issue_number: context.payload.pull_request.number,
+			body: body,
+		})
+	} else if (context.eventName === "push") {
+		await githubClient.repos.createCommitComment({
+			repo: context.repo.repo,
+			owner: context.repo.owner,
+			commit_sha: options.commit,
+			body: body,
+		})
+	}
+}
+
 async function main() {
 	const token = core.getInput("github-token")
 	const githubClient = getOctokit(token)
@@ -72,22 +90,10 @@ async function main() {
 
 	switch (postTo) {
 		case "comment":
-			if (context.eventName === "pull_request") {
-				await githubClient.issues.createComment({
-					repo: context.repo.repo,
-					owner: context.repo.owner,
-					issue_number: context.payload.pull_request.number,
-					body: body,
-				})
-			} else if (context.eventName === "push") {
-				await githubClient.repos.createCommitComment({
-					repo: context.repo.repo,
-					owner: context.repo.owner,
-					commit_sha: options.commit,
-					body: body,
-				})
-			}
+			await postComment(githubClient, body, options)
 			break
+		case "comment-and-job-summary":
+			await postComment(githubClient, body, options)
 		case "job-summary":
 			await core.summary.addRaw(body).write()
 			break
