@@ -30371,7 +30371,7 @@ function createHref(options, file) {
 	const relative = file.file.replace(options.prefix, "");
 	const parts = relative.split("/");
 	const filename = parts[parts.length - 1];
-	const url = path$1.join(options.repository, 'blob', options.commit, options.workingDir || './', relative);
+	const url = path$1.posix.join(options.repository, 'blob', options.commit, options.workingDir || './', relative);
 	return {
 		href: `https://github.com/${url}`,
 		filename
@@ -30667,6 +30667,24 @@ async function getExistingComments(github, options, context) {
 
 const MAX_COMMENT_CHARS = 65536;
 
+async function postComment(githubClient, body, options) {
+	if (context.eventName === "pull_request") {
+		await githubClient.issues.createComment({
+			repo: context.repo.repo,
+			owner: context.repo.owner,
+			issue_number: context.payload.pull_request.number,
+			body: body,
+		});
+	} else if (context.eventName === "push") {
+		await githubClient.repos.createCommitComment({
+			repo: context.repo.repo,
+			owner: context.repo.owner,
+			commit_sha: options.commit,
+			body: body,
+		});
+	}
+}
+
 async function main() {
 	const token = coreExports.getInput("github-token");
 	const githubClient = getOctokit_1(token);
@@ -30729,22 +30747,10 @@ async function main() {
 
 	switch (postTo) {
 		case "comment":
-			if (context.eventName === "pull_request") {
-				await githubClient.issues.createComment({
-					repo: context.repo.repo,
-					owner: context.repo.owner,
-					issue_number: context.payload.pull_request.number,
-					body: body,
-				});
-			} else if (context.eventName === "push") {
-				await githubClient.repos.createCommitComment({
-					repo: context.repo.repo,
-					owner: context.repo.owner,
-					commit_sha: options.commit,
-					body: body,
-				});
-			}
+			await postComment(githubClient, body, options);
 			break
+		case "comment-and-job-summary":
+			await postComment(githubClient, body, options);
 		case "job-summary":
 			await coreExports.summary.addRaw(body).write();
 			break
