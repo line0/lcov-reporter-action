@@ -30745,6 +30745,8 @@ async function main() {
 		await deleteOldComments(githubClient, options, context);
 	}
 
+	coreExports.setOutput("report", body);
+
 	switch (postTo) {
 		case "comment":
 			await postComment(githubClient, body, options);
@@ -30754,6 +30756,8 @@ async function main() {
 		case "job-summary":
 			await coreExports.summary.addRaw(body).write();
 			break
+		case "":
+			break;
 		default:
 			coreExports.warning(`Unknown post-to value: '${postTo}'`);
 	}
