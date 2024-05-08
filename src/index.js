@@ -43,6 +43,7 @@ async function main() {
 		core.getInput("delete-old-comments").toLowerCase() === "true"
 	const postTo = core.getInput("post-to").toLowerCase()
 	const title = core.getInput("title")
+	const createLinksMode = core.getInput("create-links")
 
 	const raw = await fs.readFile(lcovFile, "utf-8").catch((err) => null)
 	if (!raw) {
@@ -60,6 +61,8 @@ async function main() {
 		repository: context.payload.repository.full_name,
 		prefix: normalisePath(`${process.env.GITHUB_WORKSPACE}/`),
 		workingDir,
+		createLinksMode:
+			createLinksMode === "auto" ? "files-and-lines" : createLinksMode,
 	}
 
 	if (context.eventName === "pull_request") {
@@ -82,25 +85,39 @@ async function main() {
 
 	const lcov = await parse(raw)
 	const baselcov = baseRaw && (await parse(baseRaw))
-	const body = diff(lcov, baselcov, options).substring(0, MAX_COMMENT_CHARS)
+	const fullBody = diff(lcov, baselcov, options)
+
+	let commentBody = fullBody.substring(0, MAX_COMMENT_CHARS)
+	if (fullBody.length > MAX_COMMENT_CHARS && createLinksMode === "auto") {
+		commentBody = diff(lcov, baselcov, {
+			...options,
+			createLinksMode: "files-only",
+		})
+
+		if (commentBody.length > MAX_COMMENT_CHARS) {
+			commentBody = diff(lcov, baselcov, {
+				...options,
+				createLinksMode: "none",
+			}).substring(0, MAX_COMMENT_CHARS)
+		}
+	}
 
 	if (shouldDeleteOldComments) {
 		await deleteOldComments(githubClient, options, context)
 	}
-
-	core.setOutput("report", body);
+	core.setOutput("report", fullBody)
 
 	switch (postTo) {
 		case "comment":
-			await postComment(githubClient, body, options)
+			await postComment(githubClient, fullBody, options)
 			break
 		case "comment-and-job-summary":
-			await postComment(githubClient, body, options)
+			await postComment(githubClient, commentBody, options)
 		case "job-summary":
-			await core.summary.addRaw(body).write()
+			await core.summary.addRaw(fullBody).write()
 			break
 		case "":
-			break;
+			break
 		default:
 			core.warning(`Unknown post-to value: '${postTo}'`)
 	}

@@ -88,9 +88,12 @@ function toRow(file, indent, options) {
 }
 
 function filename(file, indent, options) {
-	const { href, filename } = createHref(options, file)
 	const space = indent ? "&nbsp; &nbsp;" : ""
-	return fragment(space, a({ href }, filename))
+	const { href, filename } = createHref(options, file)
+	
+	return options.createLinksMode === "none"
+		? fragment(space, filename)
+		: fragment(space, a({ href }, filename))
 }
 
 function percentage(item) {
@@ -123,6 +126,11 @@ function uncovered(file, options) {
 				range.start === range.end
 					? `L${range.start}`
 					: `L${range.start}-L${range.end}`
+
+			if (options.createLinksMode !== "files-and-lines") {
+				return fragment;
+			}
+
 			const { href } = createHref(options, file)
 			const text =
 				range.start === range.end

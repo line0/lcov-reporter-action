@@ -30465,9 +30465,12 @@ function toRow(file, indent, options) {
 }
 
 function filename(file, indent, options) {
-	const { href, filename } = createHref(options, file);
 	const space = indent ? "&nbsp; &nbsp;" : "";
-	return fragment(space, a({ href }, filename))
+	const { href, filename } = createHref(options, file);
+	
+	return options.createLinksMode === "none"
+		? fragment(space, filename)
+		: fragment(space, a({ href }, filename))
 }
 
 function percentage(item) {
@@ -30500,6 +30503,11 @@ function uncovered(file, options) {
 				range.start === range.end
 					? `L${range.start}`
 					: `L${range.start}-L${range.end}`;
+
+			if (options.createLinksMode !== "files-and-lines") {
+				return fragment;
+			}
+
 			const { href } = createHref(options, file);
 			const text =
 				range.start === range.end
@@ -30700,6 +30708,7 @@ async function main() {
 		coreExports.getInput("delete-old-comments").toLowerCase() === "true";
 	const postTo = coreExports.getInput("post-to").toLowerCase();
 	const title = coreExports.getInput("title");
+	const createLinksMode = coreExports.getInput("create-links");
 
 	const raw = await require$$0$1.promises.readFile(lcovFile, "utf-8").catch((err) => null);
 	if (!raw) {
@@ -30717,6 +30726,8 @@ async function main() {
 		repository: context.payload.repository.full_name,
 		prefix: normalisePath(`${process.env.GITHUB_WORKSPACE}/`),
 		workingDir,
+		createLinksMode:
+			createLinksMode === "auto" ? "files-and-lines" : createLinksMode,
 	};
 
 	if (context.eventName === "pull_request") {
@@ -30739,25 +30750,39 @@ async function main() {
 
 	const lcov = await parse(raw);
 	const baselcov = baseRaw && (await parse(baseRaw));
-	const body = diff(lcov, baselcov, options).substring(0, MAX_COMMENT_CHARS);
+	const fullBody = diff(lcov, baselcov, options);
+
+	let commentBody = fullBody.substring(0, MAX_COMMENT_CHARS);
+	if (fullBody.length > MAX_COMMENT_CHARS && createLinksMode === "auto") {
+		commentBody = diff(lcov, baselcov, {
+			...options,
+			createLinksMode: "files-only",
+		});
+
+		if (commentBody.length > MAX_COMMENT_CHARS) {
+			commentBody = diff(lcov, baselcov, {
+				...options,
+				createLinksMode: "none",
+			}).substring(0, MAX_COMMENT_CHARS);
+		}
+	}
 
 	if (shouldDeleteOldComments) {
 		await deleteOldComments(githubClient, options, context);
 	}
-
-	coreExports.setOutput("report", body);
+	coreExports.setOutput("report", fullBody);
 
 	switch (postTo) {
 		case "comment":
-			await postComment(githubClient, body, options);
+			await postComment(githubClient, fullBody, options);
 			break
 		case "comment-and-job-summary":
-			await postComment(githubClient, body, options);
+			await postComment(githubClient, commentBody, options);
 		case "job-summary":
-			await coreExports.summary.addRaw(body).write();
+			await coreExports.summary.addRaw(fullBody).write();
 			break
 		case "":
-			break;
+			break
 		default:
 			coreExports.warning(`Unknown post-to value: '${postTo}'`);
 	}

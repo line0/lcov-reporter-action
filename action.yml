@@ -30,10 +30,24 @@ inputs:
   post-to:
     description: Post the coverage report to "comment" or "job-summary" or "comment-and-job-summary" for both
     required: false
+    options:
+      - "comment"
+      - "job-summary"
+      - "comment-and-job-summary"
     default: "comment"
   title:
     description: Title to add to the comment
     required: false
+  create-links:
+    description: Create deep links to the referenced source code files and uncovered lines. Set to "auto" to create whatever is possible within the constraints of the comment/summary length limit.
+    required: false
+    options: 
+      - "none"
+      - "auto"
+      - "files"
+      - "files-and-lines"
+    default: "auto"
+    
 runs:
   using: node20
   main: dist/main.cjs
