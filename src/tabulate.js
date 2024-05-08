@@ -47,6 +47,7 @@ function shouldBeIncluded(fileName, options) {
 	if (!options.shouldFilterChangedFiles) {
 		return true
 	}
+	console.log('check if changed', fileName.replace(options.prefix, ""), options.changedFiles.includes(fileName.replace(options.prefix, "")))
 	return options.changedFiles.includes(fileName.replace(options.prefix, ""))
 }
 

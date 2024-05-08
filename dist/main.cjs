@@ -30424,6 +30424,7 @@ function shouldBeIncluded(fileName, options) {
 	if (!options.shouldFilterChangedFiles) {
 		return true
 	}
+	console.log('check if changed', fileName.replace(options.prefix, ""));
 	return options.changedFiles.includes(fileName.replace(options.prefix, ""))
 }
 
@@ -30746,6 +30747,7 @@ async function main() {
 
 	if (shouldFilterChangedFiles) {
 		options.changedFiles = await getChangedFiles(githubClient, options, context);
+		console.log(options.changedFiles);
 	}
 
 	const lcov = await parse(raw);
@@ -30774,7 +30776,7 @@ async function main() {
 
 	switch (postTo) {
 		case "comment":
-			await postComment(githubClient, fullBody, options);
+			await postComment(githubClient, commentBody, options);
 			break
 		case "comment-and-job-summary":
 			await postComment(githubClient, commentBody, options);
