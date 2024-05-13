@@ -30424,7 +30424,7 @@ function shouldBeIncluded(fileName, options) {
 	if (!options.shouldFilterChangedFiles) {
 		return true
 	}
-	console.log('check if changed', fileName.replace(options.prefix, ""));
+	console.log('check if changed', fileName.replace(options.prefix, ""), options.changedFiles.includes(fileName.replace(options.prefix, "")));
 	return options.changedFiles.includes(fileName.replace(options.prefix, ""))
 }
 
@@ -30731,6 +30731,8 @@ async function main() {
 			createLinksMode === "auto" ? "files-and-lines" : createLinksMode,
 	};
 
+	options.shouldFilterChangedFiles = shouldFilterChangedFiles;
+
 	if (context.eventName === "pull_request") {
 		options.commit = context.payload.pull_request.head.sha;
 		options.baseCommit = context.payload.pull_request.base.sha;
@@ -30740,9 +30742,12 @@ async function main() {
 		options.commit = context.payload.after;
 		options.baseCommit = context.payload.before;
 		options.head = context.ref;
+	} else if (context.eventName === 'workflow_dispatch') {
+		options.head = context.ref;
+		options.commit = context.ref;
+		options.shouldFilterChangedFiles = false;
 	}
 
-	options.shouldFilterChangedFiles = shouldFilterChangedFiles;
 	options.title = title;
 
 	if (shouldFilterChangedFiles) {
